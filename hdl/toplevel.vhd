@@ -110,7 +110,7 @@ end toplevel;
 
 architecture Behavioral of toplevel is
   attribute mark_debug  : string;
-  constant kEnDebugTop  : string:= "true";
+  constant kEnDebugTop  : string:= "false";
 
   -- System --------------------------------------------------------------------------------
   -- AMANEQ specification
@@ -223,10 +223,12 @@ architecture Behavioral of toplevel is
     end if;
   end function;
 
-  function GetIoGroup(index : integer) return string is
+  function GetIoGroup(version : string; index : integer) return string is
   begin
-    if(index = kIdMikuExt) then
+    if(index = kIdMikuExt and version = "GN-2006-1") then
       return "idelay_1";
+    elsif(index = kIdMikuExt and version = "GN-2006-4") then
+      return "idelay_4";
     else
       return GetCddIoGroup(index - kIdMikuCDD0);
     end if;
@@ -704,7 +706,7 @@ architecture Behavioral of toplevel is
         kDiffTerm        => TRUE,
         kIoStandardRx    => GetRxIoStd(kPcbVersion, i),
         kRxPolarity      => GetRxPolarity(i),
-        kIoDelayGroup    => GetIoGroup(i),
+        kIoDelayGroup    => GetIoGroup(kPcbVersion, i),
         kFixIdelayTap    => FALSE,
         kFreqFastClk     => 500.0,
         kFreqRefClk      => 200.0,
@@ -925,7 +927,8 @@ architecture Behavioral of toplevel is
       laccpUp             => is_ready_for_daq,
       partnerIpAddr       => link_addr_partter,
       hbcOffset           => (others => '0'),
-      fineOffset          => (others => '0'),
+      localFineOffset     => (others => '0'),
+      laccpFineOffset     => (others => '0'),
       hbfState            => frame_ctrl_gate,
 
       -- Local bus --
