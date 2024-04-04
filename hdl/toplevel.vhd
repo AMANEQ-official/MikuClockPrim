@@ -152,8 +152,8 @@ architecture Behavioral of toplevel is
     Index : DipID;
   end record;
   constant kSiTCP       : regLeaf := (Index => 1);
-  constant kTriggerOut  : regLeaf := (Index => 2);
-  constant kStandAlone  : regLeaf := (Index => 3);
+  constant kNC2         : regLeaf := (Index => 2);
+  constant kNC3         : regLeaf := (Index => 3);
   constant kNC4         : regLeaf := (Index => 4);
   constant kDummy       : regLeaf := (Index => 0);
 
@@ -161,8 +161,8 @@ architecture Behavioral of toplevel is
   attribute IODELAY_GROUP : string;
   attribute IODELAY_GROUP of u_FastDelay : label is "idelay_5";
 
-  --constant  kPcbVersion : string:= "GN-2006-4";
-  constant  kPcbVersion : string:= "GN-2006-1";
+  constant  kPcbVersion : string:= "GN-2006-4";
+  --constant  kPcbVersion : string:= "GN-2006-1";
 
   function GetMikuIoStd(version: string) return string is
   begin
