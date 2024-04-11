@@ -238,8 +238,7 @@ proc checkRequiredFiles { origin_dir} {
  "[file normalize "$origin_dir/hdl/laccp/laccp/RLIGP.vhd"]"\
  "[file normalize "$origin_dir/hdl/laccp/laccp/RCAP.vhd"]"\
  "[file normalize "$origin_dir/hdl/laccp/laccp/LaccpMainBlock.vhd"]"\
- "[file normalize "$origin_dir/hdl/common/sitcp/defMiiRstTimer.vhd"]"\
- "[file normalize "$origin_dir/hdl/common/sitcp/MiiRstTimer.vhd"]"\
+ "[file normalize "$origin_dir/hdl/common/main/RstDelayTimer.vhd"]"\
  "[file normalize "$origin_dir/hdl/mikumari/mikumari-link/PRBS16.vhd"]"\
  "[file normalize "$origin_dir/hdl/mikumari/mikumari-link/MikumariTx.vhd"]"\
  "[file normalize "$origin_dir/hdl/mikumari/mikumari-link/MikumariRx.vhd"]"\
@@ -487,8 +486,7 @@ set files [list \
  [file normalize "${origin_dir}/hdl/laccp/laccp/RLIGP.vhd"] \
  [file normalize "${origin_dir}/hdl/laccp/laccp/RCAP.vhd"] \
  [file normalize "${origin_dir}/hdl/laccp/laccp/LaccpMainBlock.vhd"] \
- [file normalize "${origin_dir}/hdl/common/sitcp/defMiiRstTimer.vhd"] \
- [file normalize "${origin_dir}/hdl/common/sitcp/MiiRstTimer.vhd"] \
+ [file normalize "${origin_dir}/hdl/common/main/RstDelayTimer.vhd"] \
  [file normalize "${origin_dir}/hdl/mikumari/mikumari-link/PRBS16.vhd"] \
  [file normalize "${origin_dir}/hdl/mikumari/mikumari-link/MikumariTx.vhd"] \
  [file normalize "${origin_dir}/hdl/mikumari/mikumari-link/MikumariRx.vhd"] \
@@ -1055,13 +1053,7 @@ set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
 set_property -name "file_type" -value "VHDL" -objects $file_obj
 set_property -name "library" -value "mylib" -objects $file_obj
 
-set file "$origin_dir/hdl/common/sitcp/defMiiRstTimer.vhd"
-set file [file normalize $file]
-set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
-set_property -name "file_type" -value "VHDL" -objects $file_obj
-set_property -name "library" -value "mylib" -objects $file_obj
-
-set file "$origin_dir/hdl/common/sitcp/MiiRstTimer.vhd"
+set file "$origin_dir/hdl/common/main/RstDelayTimer.vhd"
 set file [file normalize $file]
 set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
 set_property -name "file_type" -value "VHDL" -objects $file_obj
