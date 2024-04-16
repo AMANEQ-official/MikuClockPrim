@@ -163,8 +163,8 @@ architecture Behavioral of toplevel is
   attribute IODELAY_GROUP : string;
   attribute IODELAY_GROUP of u_FastDelay : label is "idelay_5";
 
-  constant  kPcbVersion : string:= "GN-2006-4";
-  --constant  kPcbVersion : string:= "GN-2006-1";
+  --constant  kPcbVersion : string:= "GN-2006-4";
+  constant  kPcbVersion : string:= "GN-2006-1";
 
   function GetMikuIoStd(version: string) return string is
   begin
@@ -292,7 +292,8 @@ architecture Behavioral of toplevel is
 
  -- LACCP --
   signal laccp_reset        : MikuScalarPort;
-  signal laccp_pulse_in     : std_logic_vector(kNumLaccpPulse-1 downto 0);
+  type LaccpPulseArray is array(kNumMikumari-1 downto 0) of std_logic_vector(kNumLaccpPulse-1 downto 0);
+  signal laccp_pulse_in     : LaccpPulseArray;
 
   signal is_ready_for_daq   : MikuScalarPort;
   signal pulse_rejected     : MikuScalarPort;
@@ -334,7 +335,8 @@ architecture Behavioral of toplevel is
   attribute mark_debug of local_fine_offset  : signal is kEnDebugTop;
 
   -- Mikumari Util ------------------------------------------------------------
-  signal cbt_init_from_mutil   : MikuScalarPort;
+  signal cbt_init_from_mutil    : MikuScalarPort;
+  signal rst_over_miku          : MikuScalarPort;
 
   -- Scaler -------------------------------------------------------------------
   constant kNumExtraScr : integer:= 2;-- Trigger ++ TrgRejected
@@ -681,14 +683,15 @@ architecture Behavioral of toplevel is
       );
   end generate;
 
-  laccp_pulse_in(kDownPulseTrigger)   <= miku_trg_in;
-  laccp_pulse_in(kDownPulseCntRst)    <= miku_scr_rst or global_scr_reset;
-  laccp_pulse_in(kDownPulseRSV7 downto kDownPulseRSV2)  <= (others => '0');
-
   laccp_fine_offset <= (others => '0');
 
   gen_mikumari : for i in 0 to kNumMikumari-1 generate
     laccp_reset(i) <= system_reset or (not mikumari_link_up(i));
+
+    laccp_pulse_in(i)(kDownPulseTrigger)   <= miku_trg_in;
+    laccp_pulse_in(i)(kDownPulseCntRst)    <= miku_scr_rst or global_scr_reset;
+    laccp_pulse_in(i)(kDownPulseSysRst)    <= rst_over_miku(i);
+    laccp_pulse_in(i)(kDownPulseRSV7 downto kDownPulseRSV3)  <= (others => '0');
 
     u_Miku_Inst : entity mylib.MikumariBlock
       generic map(
@@ -797,7 +800,7 @@ architecture Behavioral of toplevel is
 
           -- User Interface ------------------------------------------------
           isReadyForDaq     => is_ready_for_daq(i),
-          laccpPulsesIn     => laccp_pulse_in,
+          laccpPulsesIn     => laccp_pulse_in(i),
           laccpPulsesOut    => open,
           pulseInRejected   => pulse_rejected(i),
 
@@ -916,6 +919,7 @@ architecture Behavioral of toplevel is
       bitslipNumIn        => bitslip_num_out,
       cbtInitOut          => cbt_init_from_mutil,
       tapValueOut         => open,
+      rstOverMikuOut      => rst_over_miku,
 
       -- MIKUMARI Link ports --
       mikuLinkUp          => mikumari_link_up,
@@ -957,7 +961,7 @@ architecture Behavioral of toplevel is
     )
     port map(
       rst	                => system_reset,
-      cntRst              => laccp_pulse_in(kDownPulseCntRst),
+      cntRst              => laccp_pulse_in(0)(kDownPulseCntRst),
       clk	                => clk_slow,
 
       -- Module Input --
