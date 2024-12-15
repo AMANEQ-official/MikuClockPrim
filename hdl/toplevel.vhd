@@ -23,6 +23,7 @@ use mylib.defDataBusAbst.all;
 use mylib.defDelimiter.all;
 use mylib.defTDC.all;
 use mylib.defStrLRTDC.all;
+use mylib.defIOManager.all;
 
 entity toplevel is
   Port (
@@ -141,11 +142,15 @@ architecture Behavioral of toplevel is
   constant kNumInput    : integer:= 64;
 
   -- Impl --
+  signal trigger_in         : std_logic;
+  signal scr_rst_in         : std_logic;
   signal miku_trg_in        : std_logic;
   signal miku_scr_rst       : std_logic;
   signal led_hbf_state      : std_logic;
   signal idelayctrl_ready   : std_logic_vector(4 downto 0);
   signal idelay_reset       : std_logic;
+  signal frame_flag_in      : std_logic_vector(kWidthFrameFlag-1 downto 0);
+  signal frame_flag_out     : std_logic_vector(kWidthFrameFlag-1 downto 0);
 
   -- DIP -----------------------------------------------------------------------------------
   signal dip_sw       : std_logic_vector(DIP'range);
@@ -163,8 +168,8 @@ architecture Behavioral of toplevel is
   attribute IODELAY_GROUP : string;
   attribute IODELAY_GROUP of u_FastDelay : label is "idelay_5";
 
-  constant  kPcbVersion : string:= "GN-2006-4";
-  --constant  kPcbVersion : string:= "GN-2006-1";
+  --constant  kPcbVersion : string:= "GN-2006-4";
+  constant  kPcbVersion : string:= "GN-2006-1";
 
   function GetMikuIoStd(version: string) return string is
   begin
@@ -341,6 +346,7 @@ architecture Behavioral of toplevel is
   -- Scaler -------------------------------------------------------------------
   constant kMsbScr      : integer:= kNumSysInput+kNumInput-1;
   signal scr_en_in      : std_logic_vector(kMsbScr downto 0);
+  signal scr_gate       : std_logic_vector(kNumScrGate-1 downto 0);
 
   -- Streaming TDC ------------------------------------------------------------
   -- scaler --
@@ -387,6 +393,10 @@ architecture Behavioral of toplevel is
     rd_rst_busy : OUT STD_LOGIC
   );
   END COMPONENT;
+
+  -- IOM ----------------------------------------------------------------------------------
+  signal intsig_from_iom        : std_logic_vector(3 downto 0);
+  signal intsig_to_iom          : std_logic_vector(7 downto 0);
 
   -- C6C ----------------------------------------------------------------------------------
   signal c6c_reset              : std_logic;
@@ -630,8 +640,8 @@ architecture Behavioral of toplevel is
 
   u_sync_nimin1 : entity mylib.synchronizer port map(clk_slow, NIM_IN(1), sync_nim_in(1));
   u_sync_nimin2 : entity mylib.synchronizer port map(clk_slow, NIM_IN(2), sync_nim_in(2));
-  u_edge_nimin1 : entity mylib.EdgeDetector port map(clk_slow, sync_nim_in(1), miku_scr_rst);
-  u_edge_nimin2 : entity mylib.EdgeDetector port map(clk_slow, sync_nim_in(2), miku_trg_in);
+  u_edge_nimin1 : entity mylib.EdgeDetector port map(clk_slow, scr_rst_in, miku_scr_rst);
+  u_edge_nimin2 : entity mylib.EdgeDetector port map(clk_slow, trigger_in, miku_trg_in);
 
   u_nimo_buf : process(clk_slow)
   begin
@@ -639,9 +649,6 @@ architecture Behavioral of toplevel is
       NIM_OUT <= tmp_nim_out;
     end if;
   end process;
-
-  tmp_nim_out(1)  <= heartbeat_signal;
-  tmp_nim_out(2)  <= tcp_isActive(0);
 
   dip_sw(1)   <= DIP(1);
   dip_sw(2)   <= DIP(2);
@@ -891,6 +898,9 @@ architecture Behavioral of toplevel is
         heartbeatCount    => heartbeat_count,
         hbfNumber         => hbf_number,
 
+        hbfFlagsIn        => frame_flag_in,
+        frameFlags        => frame_flag_out,
+
         -- DAQ I/F --
         hbfCtrlGateIn     => frame_ctrl_gate,
         forceOn           => '0',
@@ -956,7 +966,23 @@ architecture Behavioral of toplevel is
   scr_en_in(kMsbScr - kIndexTrgReq)         <= miku_trg_in;
   scr_en_in(kMsbScr - kIndexTrgRejected)    <= or_reduce(pulse_rejected);
 
+  scr_en_in(kMsbScr - kIndexGate1Time)      <= heartbeat_signal and scr_gate(1);
+  scr_en_in(kMsbScr - kIndexGate2Time)      <= heartbeat_signal and scr_gate(2);
+
   scr_en_in(kNumInput-1 downto 0)           <= swap_vect(hit_out);
+
+  scr_gate(0)   <= '1';
+  process(clk_slow)
+  begin
+    if(clk_slow'event and clk_slow = '1') then
+      if(user_reset = '1') then
+        scr_gate(kNumScrGate-1 downto 1)  <= (others => '0');
+      elsif(heartbeat_signal = '1') then
+        scr_gate(1)   <= frame_flag_out(0);
+        scr_gate(2)   <= frame_flag_out(1);
+      end if;
+    end if;
+  end process;
 
   u_SCR: entity mylib.FreeRunScaler
     generic map(
@@ -973,6 +999,8 @@ architecture Behavioral of toplevel is
       scrEnIn             => scr_en_in,
       scrRstOut           => global_scr_reset,
 
+      scrgates            => scr_gate,
+
       -- Local bus --
       addrLocalBus        => addr_LocalBus,
       dataLocalBusIn      => data_LocalBusIn,
@@ -985,7 +1013,7 @@ architecture Behavioral of toplevel is
   --
   -- Streaming LR-TDC ---------------------------------------------------------------------
   signal_in_merge   <= MAIN_IN_D & MAIN_IN_U;
-  strtdc_trigger_in <= sync_nim_in(2);
+  strtdc_trigger_in <= trigger_in;
 
   u_SLT_Inst: entity mylib.StrLrTdc
     generic map(
@@ -1015,6 +1043,8 @@ architecture Behavioral of toplevel is
       hbfState          => hbf_state,
 
       LaccpFineOffset   => laccp_fine_offset,
+
+      frameFlagsIn      => frame_flag_out,
 
       -- Streaming TDC interface ------------------------------------
       sigIn             => signal_in_merge,
@@ -1058,6 +1088,43 @@ architecture Behavioral of toplevel is
     );
 
 
+  -- IOM ------------------------------------------------------------------------
+  frame_flag_in(0)      <= intsig_from_iom(0);
+  frame_flag_in(1)      <= intsig_from_iom(1);
+  trigger_in            <= intsig_from_iom(2);
+  scr_rst_in            <= intsig_from_iom(3);
+
+  intsig_to_iom(0)      <= heartbeat_signal;
+  intsig_to_iom(1)      <= tcp_isActive(0);
+  intsig_to_iom(2)      <= '1';
+  intsig_to_iom(3)      <= '1';
+  intsig_to_iom(4)      <= '1';
+  intsig_to_iom(5)      <= '1';
+  intsig_to_iom(6)      <= '1';
+  intsig_to_iom(7)      <= '1';
+
+
+  u_IOM : entity mylib.IOManager
+    port map(
+      rst	                => user_reset,
+      clk	                => clk_slow,
+
+      -- Ext Input
+      extInput            => sync_nim_in,
+      intOutput           => intsig_from_iom,
+
+      -- Ext Output
+      intInput            => intsig_to_iom,
+      extOutput           => tmp_nim_out,
+
+      -- Local bus --
+      addrLocalBus        => addr_LocalBus,
+      dataLocalBusIn      => data_LocalBusIn,
+      dataLocalBusOut	    => data_LocalBusOut(kIOM.ID),
+      reLocalBus          => re_LocalBus(kIOM.ID),
+      weLocalBus          => we_LocalBus(kIOM.ID),
+      readyLocalBus	      => ready_LocalBus(kIOM.ID)
+      );
 
   -- C6C -------------------------------------------------------------------------------
   u_C6C_Inst : entity mylib.CDCE62002Controller
