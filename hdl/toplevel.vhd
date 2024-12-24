@@ -917,11 +917,13 @@ architecture Behavioral of toplevel is
   u_MUTIL : entity mylib.MikumariUtil
     generic map(
       kNumMikumari => kNumMikumari
-    )
+          )
     port map(
       -- System ----------------------------------------------------
       rst               => user_reset,
       clk               => clk_slow,
+
+      clockRootMode     => '0',
 
       -- CBT status ports --
       cbtLaneUp           => cbt_lane_up,
