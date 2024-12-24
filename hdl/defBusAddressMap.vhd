@@ -41,7 +41,7 @@ package body defBusAddressMap is
     case mid_ext_bus is
       when "0000"   => return kMUTIL.ID;
       when "0001"   => return kTDC.ID;
-      when "0010"   => return kTDC.ID;
+      when "0010"   => return kIOM.ID;
       when "1000"   => return kSCR.ID;
       when "1011"   => return kC6C.ID;
       when "1100"   => return kSDS.ID;

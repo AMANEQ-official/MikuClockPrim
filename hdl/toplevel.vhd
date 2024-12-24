@@ -168,8 +168,8 @@ architecture Behavioral of toplevel is
   attribute IODELAY_GROUP : string;
   attribute IODELAY_GROUP of u_FastDelay : label is "idelay_5";
 
-  --constant  kPcbVersion : string:= "GN-2006-4";
-  constant  kPcbVersion : string:= "GN-2006-1";
+  constant  kPcbVersion : string:= "GN-2006-4";
+  --constant  kPcbVersion : string:= "GN-2006-1";
 
   function GetMikuIoStd(version: string) return string is
   begin
@@ -640,8 +640,6 @@ architecture Behavioral of toplevel is
 
   u_sync_nimin1 : entity mylib.synchronizer port map(clk_slow, NIM_IN(1), sync_nim_in(1));
   u_sync_nimin2 : entity mylib.synchronizer port map(clk_slow, NIM_IN(2), sync_nim_in(2));
-  u_edge_nimin1 : entity mylib.EdgeDetector port map(clk_slow, scr_rst_in, miku_scr_rst);
-  u_edge_nimin2 : entity mylib.EdgeDetector port map(clk_slow, trigger_in, miku_trg_in);
 
   u_nimo_buf : process(clk_slow)
   begin
@@ -919,11 +917,13 @@ architecture Behavioral of toplevel is
   u_MUTIL : entity mylib.MikumariUtil
     generic map(
       kNumMikumari => kNumMikumari
-    )
+          )
     port map(
       -- System ----------------------------------------------------
       rst               => user_reset,
       clk               => clk_slow,
+
+      clockRootMode     => '0',
 
       -- CBT status ports --
       cbtLaneUp           => cbt_lane_up,
@@ -1089,6 +1089,9 @@ architecture Behavioral of toplevel is
 
 
   -- IOM ------------------------------------------------------------------------
+  u_edge_scr : entity mylib.EdgeDetector port map(clk_slow, scr_rst_in, miku_scr_rst);
+  u_edge_trg : entity mylib.EdgeDetector port map(clk_slow, trigger_in, miku_trg_in);
+
   frame_flag_in(0)      <= intsig_from_iom(0);
   frame_flag_in(1)      <= intsig_from_iom(1);
   trigger_in            <= intsig_from_iom(2);
